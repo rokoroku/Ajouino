@@ -13,24 +13,31 @@ import java.util.Date;
  * @author YoungRok
  */
 public class Event implements JDBCUtil.SQLObjectInteface {
-    String deviceID;
-    String pinType = "digital";
 
-    int pin;
-    int value;
+    public static final String TYPE_DIGITAL = "digital";
+    public static final String TYPE_ANALOG = "analog";
+    public static final String TYPE_COLOR = "color";
+    public static final String TYPE_INFO = "hello";
+
+    String deviceID;
+    String type;
+    Integer value;
     Date timestamp;
 
     public Event() {
-    }    
+    }
 
-    public Event(String deviceID, int pin, int value, Date timestamp) {
+    public Event(String deviceID, String type, int value) {
+        this(deviceID, type, value, new Date());
+    }
+
+    public Event(String deviceID, String type, int value, Date timestamp) {
         this.deviceID = deviceID;
-        this.pin = pin;
+        this.type = type;
         this.value = value;
         this.timestamp = timestamp;
     }
-    
-    
+
     public String getDeviceID() {
         return deviceID;
     }
@@ -39,23 +46,15 @@ public class Event implements JDBCUtil.SQLObjectInteface {
         this.deviceID = deviceID;
     }
 
-    public String getPinType() {
-        return pinType;
+    public String getType() {
+        return type;
     }
 
-    public void setPinType(String pinType) {
-        this.pinType = pinType;
-    }
-    
-    public int getPin() {
-        return pin;
+    public void setType(String type) {
+        this.type = type;
     }
 
-    public void setPin(int pin) {
-        this.pin = pin;
-    }
-
-    public int getValue() {
+    public Integer getValue() {
         return value;
     }
 
@@ -76,10 +75,10 @@ public class Event implements JDBCUtil.SQLObjectInteface {
         StringBuilder sb = new StringBuilder();
  
         sb.append("VALUES (")
-                .append((timestamp != null) ? "'" + timestamp.getTime() + "'" : "null")
+                .append((timestamp != null) ? "'" + timestamp.getTime() + "'" : "null").append(", ")
                 .append((deviceID != null) ? "'" + deviceID + "'" : "null").append(", ")
-                .append(pin).append(",")
-                .append(value).append(", ")
+                .append((type != null) ? "'" + type + "'" : "null").append(", ")
+                .append(value).append(" ")
                 .append(")");
         return sb.toString();
     }

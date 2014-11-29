@@ -5,12 +5,13 @@
  */
 package ajouino.controllers;
 
+import ajouino.AjouinoServer;
 import ajouino.model.User;
 import ajouino.services.UserManager;
 import ajouino.services.SystemServiceFacade;
-import ajouino.util.HTTPInterface;
 import com.google.gson.Gson;
 import fi.iki.elonen.NanoHTTPD;
+
 import java.util.Collection;
 import java.util.Date;
 import java.util.Map;
@@ -18,7 +19,7 @@ import java.util.Map;
 /**
  * @author YoungRok
  */
-public class UserController implements HTTPInterface {
+public class UserController implements AjouinoServer.HTTPInterface {
 
     private UserManager userManager;
 
@@ -26,6 +27,14 @@ public class UserController implements HTTPInterface {
         userManager = SystemServiceFacade.getInstance().getUserManager();
     }
 
+    /**
+     * Controls user REST methods
+     *
+     * @param method HTTP methods e.g. GET, PUT, POST, DELETE
+     * @param uri    given uri "/user/id/", ["device", "id"]
+     * @param param  given param "?addr=127.0.0.1&password=ajouino", [<"addr","127.0.0.1">, <"password", "ajouino">]
+     * @return Response can be json, html, etc.
+     */
     @Override
     public NanoHTTPD.Response processRequest(NanoHTTPD.Method method, String[] uri, Map<String, String> param) {
         //request : "/user/id/attr/"
@@ -36,14 +45,14 @@ public class UserController implements HTTPInterface {
         String value = null;
 
         try {
-            if (uri[0] != null && !uri[0].isEmpty()) {
-                userId = uri[0];
-            }
-            if (uri.length > 0) {
-                attr = uri[1];
+            if (uri[1] != null && !uri[1].isEmpty()) {
+                userId = uri[1];
             }
             if (uri.length > 1) {
-                value = uri[2];
+                attr = uri[2];
+                if (uri.length > 2) {
+                    value = uri[3];
+                }
             }
         } catch (Exception e) {
             return new NanoHTTPD.Response(NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "BAD REQUEST: Syntax error. Usage: GET /user/id/");
@@ -81,8 +90,8 @@ public class UserController implements HTTPInterface {
                 }
 
             case PUT:
-                if(userId != null) {
-                    //TODO: add user (userId will be address)
+                if (userId != null) {
+                    //TODO: add user
                     User user = new User(userId, new Date().toString());
                     user.setGcmAddress(user.toString());
                     userManager.putUser(user);
@@ -90,17 +99,17 @@ public class UserController implements HTTPInterface {
                 } else {
                     return new NanoHTTPD.Response(NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "BAD REQUEST: Syntax error. Usage: PUT /user/inetaddress");
                 }
-    
+
             case DELETE:
-                if(userId != null) {
-                    //TODO: add user (userId will be address)
+                if (userId != null) {
+                    //TODO: remoce user
                     User user = userManager.removeUser(userId);
                     return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_JSON, gson.toJson(user));
                 } else {
                     return new NanoHTTPD.Response(NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "BAD REQUEST: Syntax error. Usage: DELETE /user/id");
                 }
 
-            
+
             default:
                 break;
         }

@@ -5,10 +5,23 @@
  */
 package ajouino.controllers;
 
+import ajouino.AjouinoServer;
+import fi.iki.elonen.NanoHTTPD;
+
+import java.util.Map;
+
 /**
  *
  * @author YoungRok
  */
-public class SystemController {
-    
+public class SystemController implements AjouinoServer.HTTPInterface {
+
+    public SystemController() {
+
+    }
+
+    @Override
+    public NanoHTTPD.Response processRequest(NanoHTTPD.Method method, String[] uriParams, Map<String, String> httpParams) {
+        return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, "OK");
+    }
 }

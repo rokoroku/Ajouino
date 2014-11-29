@@ -7,6 +7,8 @@ package ajouino.model;
 
 import ajouino.util.ArduinoUtil;
 import ajouino.util.JDBCUtil;
+
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -19,36 +21,25 @@ import java.util.logging.Logger;
  *
  * @author YoungRok
  */
-public class Device implements JDBCUtil.SQLObjectInteface {
+public class Device extends DeviceInfo implements JDBCUtil.SQLObjectInteface {
 
-    String deviceID;
-    String label;
-    String address;
-    String password;
-    String type;
-    Map<Integer, Integer> values;
-    List<Event> events;
-    Date createDate;
-    Date lastSyncDate;
-    boolean available;
+    private String password;
+    private List<Event> events = new ArrayList<Event>();
+    private Date createDate;
+    private Date lastSyncDate;
+    private boolean available;
 
-    public Device(String deviceID, String address) {
-        this.deviceID = deviceID;
-        this.address = address;
-        this.createDate = new Date();
-        this.lastSyncDate = new Date();
-        this.events = new ArrayList<Event>();
-        this.values = new HashMap<Integer, Integer>();
+    public Device(DeviceInfo deviceInfo) {
+        super(deviceInfo.getId(), deviceInfo.getType(), deviceInfo.getAddress(), deviceInfo.getLabel());
     }
 
-    public Device(String deviceID, String address, String password) {
-        this(deviceID, address);
-        this.password = password;
+    public Device(String deviceID, String type, String address, String label) {
+        super(deviceID, type, address, label);
     }
 
     public boolean connect() {
         try {
-            ArduinoUtil.requestInformation(address, password);
+            ArduinoUtil.requestInformation(this);
             this.available = true;
         } catch (ArduinoUtil.ArduinoException ex) {
             Logger.getLogger(Device.class.getName()).log(Level.SEVERE, null, ex);
@@ -65,14 +56,6 @@ public class Device implements JDBCUtil.SQLObjectInteface {
             return true;
         }
         return false;
-    }
-
-    public String getDeviceID() {
-        return deviceID;
-    }
-
-    public void setDeviceID(String deviceID) {
-        this.deviceID = deviceID;
     }
 
     public String getLabel() {
@@ -119,14 +102,6 @@ public class Device implements JDBCUtil.SQLObjectInteface {
         this.lastSyncDate = lastSyncDate;
     }
 
-    public Map<Integer, Integer> getValues() {
-        return values;
-    }
-
-    public void setValues(Map<Integer, Integer> values) {
-        this.values = values;
-    }
-
     public boolean isAvailable() {
         return available;
     }
@@ -144,7 +119,7 @@ public class Device implements JDBCUtil.SQLObjectInteface {
     }
 
     public void addEvent(Event event) {
-        events.add(event);
+        if(!events.contains(event)) events.add(event);
     }
 
     @Override
@@ -152,12 +127,11 @@ public class Device implements JDBCUtil.SQLObjectInteface {
         StringBuilder sb = new StringBuilder();
 
         sb.append("VALUES (")
-                .append((deviceID != null) ? "'" + deviceID + "'" : "null").append(", ")
+                .append((id != null) ? "'" + id + "'" : "null").append(", ")
                 .append((address != null) ? "'" + address + "'" : "null").append(", ")
                 .append((type != null) ? "'" + type + "'" : "null").append(", ")
                 .append((label != null) ? "'" + label + "'" : "null").append(", ")
                 .append((password != null) ? "'" + password + "'" : "null").append(", ")
-                .append((values.size() > 0) ? "'" + values + "'" : "null").append(", ")
                 .append((createDate != null) ? "'" + createDate.getTime() + "'" : "null")
                 .append(")");
         return sb.toString();

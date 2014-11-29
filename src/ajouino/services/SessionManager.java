@@ -30,7 +30,7 @@ public class SessionManager {
     }
     
     public void createSession(final User user, final String inetAddress) {
-        createSession(user, inetAddress, 5000);
+        createSession(user, inetAddress, 30000);
     }
 
     public void createSession(final User user, final String inetAddress, long timeout) {

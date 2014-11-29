@@ -136,28 +136,6 @@ public class JDBCUtil {
         return state.executeUpdate(query);
     }
 
-    //print objects in the result set
-    public static void printResultSet(ResultSet resultSet) throws SQLException {
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        while (resultSet.next()) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 1; i <= metaData.getColumnCount(); i++) {
-                if (i == 1) {
-                    sb.append(metaData.getTableName(i)).append('{');
-                }
-
-                sb.append(metaData.getColumnLabel(i)).append('=')
-                        .append(resultSet.getObject(i));
-
-                if (i + 1 <= metaData.getColumnCount()) {
-                    sb.append(", ");
-                }
-            }
-            sb.append('}');
-            System.out.println(sb.toString());
-        }
-    }
-
     public static boolean isOpened() {
         return isOpened;
     }

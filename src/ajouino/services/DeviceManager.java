@@ -8,11 +8,14 @@ package ajouino.services;
 import ajouino.model.Device;
 import ajouino.model.DeviceInfo;
 import ajouino.model.Event;
-import ajouino.util.DeviceFactory;
 import ajouino.util.JDBCUtil;
+import ajouino.util.JmDNSUtil;
+
+import javax.jmdns.ServiceInfo;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Map;
@@ -42,28 +45,68 @@ public class DeviceManager {
         return deviceMap.values();
     }
 
-    public void putDevice(Device device) {
-        if (device != null && device.getDeviceID() != null) {
-            deviceMap.put(device.getDeviceID(), device);
+    public boolean putDevice(Device device) {
+        if (device != null && device.getId() != null) {
 
             try {
                 if(!JDBCUtil.isOpened()) JDBCUtil.openConnection();
                 JDBCUtil.insertRecord("DEVICE", device);
+                deviceMap.put(device.getId(), device);
+                return true;
             } catch (SQLException ex) {
                 Logger.getLogger(DeviceManager.class.getName()).log(Level.SEVERE, null, ex);
             }
-            
         }
+        return false;
     }
 
     public Device removeDevice(String deviceId) {
-        return deviceMap.remove(deviceId);
+        Device device = deviceMap.remove(deviceId);
+        try {
+            String relation = "DEVICE";
+            String projection = "'Id'='" + deviceId +"'";
+            String condition = null;
+            JDBCUtil.deleteRecord(projection, relation, condition);
+
+            relation = "EVENT";
+            projection = "'D_Id'='" + deviceId +"'";
+            JDBCUtil.deleteRecord(projection, relation, condition);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return device;
     }
 
-    public boolean updateData(Device device) {
+    public Collection<DeviceInfo> lookupDeviceOnNetwork() {
+
+        Collection<DeviceInfo> deviceInfos = new ArrayList<DeviceInfo>();
+        ServiceInfo[] serviceInfos = JmDNSUtil.lookupServices(JmDNSUtil.ARDUINO_SERVICE);
+
+        for(ServiceInfo info : serviceInfos) {
+            System.out.println(info.toString());
+            DeviceInfo deviceInfo = new DeviceInfo();
+            deviceInfo.setAddress(info.getHostAddresses()[0]);
+            deviceInfo.setLabel(info.getName());
+            deviceInfo.setId(info.getName());
+            deviceInfos.add(deviceInfo);
+        }
+        return deviceInfos;
+
+    }
+
+    public Boolean putEvent(Device device, Event event) {
+        if (device.getId().equals(event.getDeviceID())) try {
+            if(!JDBCUtil.isOpened()) JDBCUtil.openConnection();
+            JDBCUtil.insertRecord("EVENT", event);
+            device.addEvent(event);
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return false;
     }
-    
+
     public void reloadData() {
         if(deviceMap == null) deviceMap = new ConcurrentHashMap<String, Device>();
         else deviceMap.clear();
@@ -80,7 +123,6 @@ public class DeviceManager {
                 String deviceType = resultSet.getString("Type");
                 String deviceLabel = resultSet.getString("Label");
                 String devicePW = resultSet.getString("Password");
-                int devicePins = resultSet.getInt("Pin");
                 Date createDate = new Date(resultSet.getLong("CreateDate"));
                 
                 DeviceInfo deviceInfo = new DeviceInfo(deviceId, deviceType, deviceAddr, deviceLabel);
@@ -96,9 +138,10 @@ public class DeviceManager {
 
                 while(resultSet2.next()) {
                     Date timestamp = new Date(resultSet2.getLong("Timestamp"));
-                    int pin = resultSet2.getInt("pin");
-                    int value = resultSet2.getInt("value");
-                    Event event = new Event(deviceId, pin, value, timestamp);
+                    String type = resultSet2.getString("Type");
+                    int value = resultSet2.getInt("Value");
+
+                    Event event = new Event(deviceId, type, value, timestamp);
                     device.addEvent(event);
                 }
     
@@ -119,7 +162,6 @@ public class DeviceManager {
                     + "Type VARCHAR(10),"
                     + "Label VARCHAR(15),"
                     + "Password VARCHAR(15),"
-                    + "Pin INT,"
                     + "CreateDate INT8,"
                     + "PRIMARY KEY (Id)";
             JDBCUtil.createTable(relation, definition);
@@ -127,7 +169,7 @@ public class DeviceManager {
             relation = "EVENT";
             definition = "Timestamp INT8 NOT NULL,"
                     + "D_id VARCHAR(15) NOT NULL,"
-                    + "Pin INT NOT NULL,"
+                    + "Type CARCHAR(8) NOT NULL,"
                     + "Value INT NOT NULL,"
                     + "PRIMARY KEY (Timestamp) "
                     + "FOREIGN KEY (D_id) REFERENCES DEVICE(Id)";

@@ -7,13 +7,18 @@ import ajouino.model.DeviceInfo;
 import ajouino.model.User;
 import ajouino.services.SessionManager;
 import ajouino.services.SystemServiceFacade;
-import ajouino.util.HTTPInterface;
 import com.google.gson.Gson;
 import com.sun.xml.internal.messaging.saaj.util.Base64;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.ServerRunner;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 /**
  * Ajouino HTTP server.
@@ -28,7 +33,7 @@ public class AjouinoServer extends NanoHTTPD {
     private SessionManager sessionManager;
 
     public AjouinoServer() {
-        super(8080);
+        super(80);
 
         sessionManager = SystemServiceFacade.getInstance().getSessionManager();
 
@@ -36,66 +41,67 @@ public class AjouinoServer extends NanoHTTPD {
         userController = new UserController();
         systemController = new SystemController();
         SystemServiceFacade.getInstance().getUserManager().putUser(new User("admin", "1234"));
-        
-        DeviceInfo info = new DeviceInfo("1", "powerstrip", "192.168.0.1", "powerstrip");
-        info.getValues().put(13, 1);
-        info.getValues().put(14, 1);
-        
-        Gson gson = new Gson();
-        System.out.println(gson.toJson(info));
-        
+
     }
 
     @Override
     public Response serve(IHTTPSession session) {
         Method method = session.getMethod();
         String uri = session.getUri();
-        Map<String, String> params = session.getParms();
-        String remoteAddress = new String(session.getHeaders().get("remote-addr").getBytes());
-        if(params.get("address") == null) params.put("address", remoteAddress);
+        Map<String, String> httpParams = session.getParms();
 
+        // put remote host address into params
+        String remoteAddress = new String(session.getHeaders().get("remote-addr").getBytes());
+        if(httpParams.get("address") == null) {
+            httpParams.put("address", remoteAddress);
+        }
+
+        // put body contents into params
+        if(method.equals(Method.PUT) || method.equals(Method.POST)) try {
+            session.parseBody(httpParams);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Get user from created session
+        // or create a new session if valid authentication header is given
         User user = sessionManager.getUserFromSession(remoteAddress);
-        if (user == null) try {
-            //TODO: 유저 인증 필요
-            String authToken = session.getHeaders().get("authorization");
-            authToken = authToken.split(" ")[1];
-            if(authToken != null && !authToken.isEmpty()) {
-                String userId = Base64.base64Decode(authToken).split(":")[0];
-                user = SystemServiceFacade.getInstance().getUserManager().getUser(userId);
-                if (user != null && user.authenticate(authToken)) {
-                    sessionManager.createSession(user, remoteAddress);
-                } else {
-                    return new Response(Response.Status.UNAUTHORIZED, NanoHTTPD.MIME_PLAINTEXT, "Unauthorized");
-                }
+        if (user == null) {
+            String authHeader = session.getHeaders().get("authorization");
+            user = getUserFromHeader(authHeader);
+            if (user != null) {
+                sessionManager.createSession(user, remoteAddress);
             } else {
                 return new Response(Response.Status.UNAUTHORIZED, NanoHTTPD.MIME_PLAINTEXT, "Unauthorized");
             }
-        } catch (Exception e ){ 
-            return new Response(Response.Status.UNAUTHORIZED, NanoHTTPD.MIME_PLAINTEXT, "Unauthorized");            
         }
 
-        System.out.println(method + " '" + uri + "' ");
-        String[] splittedUri = uri.split("/", 3);
-        //uri : "/device/id/pin/value"
-        //spliited : ["", "device", "id/pin/value"]
+        System.out.println(method + " " + uri + " " + httpParams.get("postData"));
+        String[] splittedUri = uri.split("/");
 
-        Response response;
+        Response response = null;
+        HTTPInterface controller = null;
         if (splittedUri.length > 1) {
-            HTTPInterface controller = null;
-            if (splittedUri[1].equalsIgnoreCase("device")) {
+
+            // select an appropriate controller
+            if (splittedUri[1].startsWith("device")) {
                 controller = (HTTPInterface) deviceController;
-            } else if (splittedUri[1].equalsIgnoreCase("user")) {
+            } else if (splittedUri[1].startsWith("user")) {
                 controller = (HTTPInterface) userController;
-            } else if (splittedUri[1].equalsIgnoreCase("system")) {
+            } else if (splittedUri[1].equalsIgnoreCase("session")) {
                 controller = (HTTPInterface) systemController;
             }
 
+            // route to the controller
             if (controller != null) {
-                response = controller.processRequest(method, splittedUri[2].split("/"), params);
+                String uriParams[] = Arrays.copyOfRange(splittedUri, 1, splittedUri.length);
+                response = controller.processRequest(method, uriParams, httpParams);
             } else {
                 response = new Response(Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "Bad request");
             }
+
         } else {
+            // index page response
             System.out.println(method + " '" + uri + "' ");
             String msg = "<html><body><h1>Hello server</h1>\n";
             Map<String, String> parms = session.getParms();
@@ -112,11 +118,27 @@ public class AjouinoServer extends NanoHTTPD {
             response = new Response(msg);
         }
 
+//        System.out.println("   > " + response.getData());
         return response;
+    }
+
+    private User getUserFromHeader(String authHeader) {
+        if(authHeader != null && !authHeader.isEmpty()) {
+            authHeader = authHeader.split(" ")[1];
+            String userId = Base64.base64Decode(authHeader).split(":")[0];
+            User user = SystemServiceFacade.getInstance().getUserManager().getUser(userId);
+            if (user != null && user.authenticate(authHeader)) {
+                return user;
+            }
+        }
+        return null;
     }
 
     public static void main(String[] args) {
         ServerRunner.run(AjouinoServer.class);
     }
 
+    public static interface HTTPInterface {
+        public Response processRequest(Method method, String[] uriParams, Map<String, String> httpParams);
+    }
 }

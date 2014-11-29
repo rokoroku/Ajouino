@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package ajouino.util;
+package ajouino.services;
 
 import ajouino.model.Device;
 import ajouino.model.DeviceInfo;
@@ -22,17 +22,17 @@ public class DeviceFactory {
 
         if (type != null) {
             if (type.equalsIgnoreCase("powerstrip")) {
-                device = new PowerStrip(deviceInfo.getId(), deviceInfo.getAddress());
+                device = new PowerStrip(deviceInfo);
             } else if (type.equalsIgnoreCase("lamp")) {
-                device = new Lamp(deviceInfo.getId(), deviceInfo.getAddress());
+                device = new Lamp(deviceInfo);
             } else if (type.equalsIgnoreCase("intercom")) {
-                device = new Device(deviceInfo.getId(), deviceInfo.getAddress());
+                device = new Device(deviceInfo);
             } else {
-                device = new Device(deviceInfo.getId(), deviceInfo.getAddress());
+                device = new Device(deviceInfo);
             }
             device.setType(type);
         } else {
-            device = new Device(deviceInfo.getId(), deviceInfo.getAddress());
+            device = new Device(deviceInfo);
         }
         
         if (deviceInfo.getValues() != null) {

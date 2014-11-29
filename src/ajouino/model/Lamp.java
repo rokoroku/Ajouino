@@ -11,8 +11,9 @@ package ajouino.model;
  */
 public class Lamp extends Device {
 
-    public Lamp(String deviceID, String address) {
-        super(deviceID, address);
+    public Lamp(DeviceInfo deviceInfo) {
+        super(deviceInfo);
+        setType("lamp");
     }
-    
+
 }

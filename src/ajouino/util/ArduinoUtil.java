@@ -15,11 +15,11 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
  * @author YoungRok
  */
 public class ArduinoUtil {
@@ -38,59 +38,34 @@ public class ArduinoUtil {
         }
     }
 
-    /**
-     * build url like :
-     * http://root:arduino@192.168.0.104/arduino/digital/13/0  
-     * 
-     * @param device : device to invoke an event
-     * @param event : event to invoke
-     * @return : Returned string
-     */
-    public static String createRequestUri(Device device, Event event) {
+    public static String requestInformation(Device device) throws ArduinoException {
         StringBuilder sb = new StringBuilder();
-        if (!device.getAddress().startsWith("http://")) {
-            sb.append("http://");
-        }
-        if (device.getPassword() != null) {
-            sb.append("root:").append(device.getPassword()).append("@");
-        }
-        sb.append(device.getAddress()).append("/arduino/");
-
-        if (event != null) {
-            sb.append(event.getPinType()).append("/")
-                    .append(event.getPin()).append("/")
-                    .append(event.getValue());
-        }
-        return sb.toString();
-    }
-
-    public static String requestInformation(String address, String password) throws ArduinoException {
-        StringBuilder sb = new StringBuilder();
+        String address = device.getAddress();
         if (!address.startsWith("http://")) {
             sb.append("http://");
         }
-        if (password != null) {
-            sb.append("root:").append(password).append("@");
-        }
-        
+
         sb.append(address)
                 .append("/arduino/hello/0");
-        
-        return invoke(sb.toString());
+
+        return invoke(sb.toString(), generateBasicAuth(device));
     }
 
     public static String invokeEvent(Device device, Event event) throws ArduinoException {
-        return invoke(createRequestUri(device, event));
+        return invoke(createRequestUri(device, event), generateBasicAuth(device));
     }
 
-    public static String invoke(String uri) throws ArduinoException {
+    public static String invoke(String uri, String authHeader) throws ArduinoException {
         try {
             URL url = new URL(uri);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
+            System.out.println("invoke arduino event : " + uri);
+
             connection.setRequestMethod("GET");
-            connection.setConnectTimeout(5000);
+            connection.setConnectTimeout(10000);
             connection.setRequestProperty("User-Agent", "Ajouino");
+            if (authHeader != null) connection.setRequestProperty("Authorization", authHeader);
 
             // get response
             int responseCode = connection.getResponseCode();
@@ -123,5 +98,36 @@ public class ArduinoUtil {
             Logger.getLogger(ArduinoUtil.class.getName()).log(Level.SEVERE, null, ex);
         }
         throw new ArduinoException(HttpURLConnection.HTTP_UNAVAILABLE, "Unavailable");
+    }
+
+    /**
+     * build url like :
+     * http://root:arduino@192.168.0.104/arduino/digital/13/0
+     *
+     * @param device device to invoke an event
+     * @param event  event to invoke
+     * @return Returned string
+     */
+    private static String createRequestUri(Device device, Event event) {
+        StringBuilder sb = new StringBuilder();
+        if (!device.getAddress().startsWith("http://")) {
+            sb.append("http://");
+        }
+        sb.append(device.getAddress()).append("/arduino/");
+
+        if (event != null && event.getType() != null) {
+            sb.append(event.getType()).append("/");
+            if (event.getValue() != null) {
+                if (event.getType().equals("color")) sb.append(String.format("%08X", event.getValue()));
+                else sb.append(event.getValue());
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String generateBasicAuth(Device device) {
+        String credential = "root:" + device.getPassword();
+        String basicAuth = "Basic " + Base64.getEncoder().encodeToString(credential.getBytes());
+        return basicAuth;
     }
 }

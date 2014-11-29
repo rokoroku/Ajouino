@@ -16,11 +16,11 @@ import java.util.Map;
  * @author YoungRok
  */
 public class DeviceInfo {
-    String id;  
-    String type;  
-    String address;
-    String label;
-    Map<Integer, Integer> values;    
+    protected String id;
+    protected String type;
+    protected String address;
+    protected String label;
+    protected Map<String, Integer> values;
 
     public DeviceInfo() {
     }
@@ -30,7 +30,7 @@ public class DeviceInfo {
         this.type = type;
         this.address = address;
         this.label = label;
-        values = new HashMap<Integer, Integer>();
+        this.values = new HashMap<String, Integer>();
     }
     
     public String getId() {
@@ -65,11 +65,11 @@ public class DeviceInfo {
         this.label = label;
     }
 
-    public Map<Integer, Integer> getValues() {
+    public Map<String, Integer> getValues() {
         return values;
     }
 
-    public void setValues(Map<Integer, Integer> values) {
+    public void setValues(Map<String, Integer> values) {
         this.values = values;
     }
     
