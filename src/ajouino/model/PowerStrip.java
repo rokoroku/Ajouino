@@ -14,8 +14,4 @@ public class PowerStrip extends Device {
     public PowerStrip(DeviceInfo deviceInfo) {
         super(deviceInfo);
     }
-
-    public PowerStrip(String deviceID, String type, String address, String label) {
-        super(deviceID, type, address, label);
-    }
 }

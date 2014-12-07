@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package ajouino.services;
+package ajouino.service;
 
 import ajouino.model.User;
 import java.util.Map;
@@ -36,16 +36,16 @@ public class SessionManager {
     public void createSession(final User user, final String inetAddress, long timeout) {
         if (!userSessionTable.containsKey(inetAddress)) {
             userSessionTable.put(inetAddress, user);
-            System.out.println("create new session : " + user.getUserID() + "/" + inetAddress);
+            System.out.println("create new session : " + user.getId() + "/" + inetAddress);
         }
         if (!sessionTimerTable.containsKey(inetAddress)) {
-            Timer timer = new Timer(user.getUserID());
+            Timer timer = new Timer(user.getId());
             TimerTask tt = new TimerTask() {
                 @Override
                 public void run() {
                     userSessionTable.remove(inetAddress);
                     sessionTimerTable.remove(inetAddress);
-                    System.out.println("Session timeout : " + user.getUserID() + "/" + inetAddress);
+                    System.out.println("Session timeout : " + user.getId() + "/" + inetAddress);
                 }
             };
             sessionTimerTable.put(inetAddress, timer);
@@ -58,11 +58,11 @@ public class SessionManager {
                 public void run() {
                     userSessionTable.remove(inetAddress);
                     sessionTimerTable.remove(inetAddress);
-                    System.out.println("Session timeout : " + user.getUserID() + "/" + inetAddress);
+                    System.out.println("Session timeout : " + user.getId() + "/" + inetAddress);
                 }
             };
-            timer = new Timer(user.getUserID());
-            sessionTimerTable.put(user.getUserID(), timer);
+            timer = new Timer(user.getId());
+            sessionTimerTable.put(user.getId(), timer);
             timer.schedule(tt, timeout);
         }
     }

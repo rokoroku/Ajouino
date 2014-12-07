@@ -7,28 +7,27 @@ package ajouino.util;
 
 import ajouino.model.Device;
 import ajouino.model.Event;
-import fi.iki.elonen.NanoHTTPD;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
-import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * @author YoungRok
  */
-public class ArduinoUtil {
+public class ArduinoCaller {
 
-    public static class ArduinoException extends Exception {
+    public static class ArduinoCallException extends Exception {
 
         int errorCode;
 
-        public ArduinoException(int errorCode, String string) {
+        public ArduinoCallException(int errorCode, String string) {
             super(string);
             this.errorCode = errorCode;
         }
@@ -38,24 +37,23 @@ public class ArduinoUtil {
         }
     }
 
-    public static String requestInformation(Device device) throws ArduinoException {
+    public static String requestInformation(Device device) throws ArduinoCallException {
         StringBuilder sb = new StringBuilder();
         String address = device.getAddress();
-        if (!address.startsWith("http://")) {
-            sb.append("http://");
-        }
+        if (!address.startsWith("http://")) sb.append("http://");
+        sb.append(address).append("/arduino/hello/0");
 
-        sb.append(address)
-                .append("/arduino/hello/0");
-
-        return invoke(sb.toString(), generateBasicAuth(device));
+        String authHeader = AuthUtils.generateBasicAuthHeader("root", device.getPassword());
+        return invoke(sb.toString(), authHeader);
     }
 
-    public static String invokeEvent(Device device, Event event) throws ArduinoException {
-        return invoke(createRequestUri(device, event), generateBasicAuth(device));
+    public static String invokeEvent(Device device, Event event) throws ArduinoCallException {
+        String uri = createRequestUri(device, event);
+        String authHeader = AuthUtils.generateBasicAuthHeader("root", device.getPassword());
+        return invoke(uri, authHeader);
     }
 
-    public static String invoke(String uri, String authHeader) throws ArduinoException {
+    public static String invoke(String uri, String authHeader) throws ArduinoCallException {
         try {
             URL url = new URL(uri);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -84,20 +82,22 @@ public class ArduinoUtil {
                     return response.toString();
 
                 case HttpURLConnection.HTTP_UNAUTHORIZED:
-                    throw new ArduinoException(responseCode, "Unauthorized");
+                    throw new ArduinoCallException(responseCode, "Unauthorized");
                 case HttpURLConnection.HTTP_NOT_FOUND:
-                    throw new ArduinoException(responseCode, "Not found");
+                    throw new ArduinoCallException(responseCode, "Not found");
                 case HttpURLConnection.HTTP_BAD_REQUEST:
-                    throw new ArduinoException(responseCode, "Bad request");
+                    throw new ArduinoCallException(responseCode, "Bad request");
                 case HttpURLConnection.HTTP_CLIENT_TIMEOUT:
-                    throw new ArduinoException(responseCode, "Client timeout");
+                    throw new ArduinoCallException(responseCode, "Client timeout");
             }
+        } catch (SocketTimeoutException ex ) {
+            Logger.getLogger(ArduinoCaller.class.getName()).log(Level.SEVERE, null, ex);
         } catch (MalformedURLException ex) {
-            Logger.getLogger(ArduinoUtil.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ArduinoCaller.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
-            Logger.getLogger(ArduinoUtil.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ArduinoCaller.class.getName()).log(Level.SEVERE, null, ex);
         }
-        throw new ArduinoException(HttpURLConnection.HTTP_UNAVAILABLE, "Unavailable");
+        throw new ArduinoCallException(HttpURLConnection.HTTP_UNAVAILABLE, "Unavailable");
     }
 
     /**
@@ -125,9 +125,4 @@ public class ArduinoUtil {
         return sb.toString();
     }
 
-    private static String generateBasicAuth(Device device) {
-        String credential = "root:" + device.getPassword();
-        String basicAuth = "Basic " + Base64.getEncoder().encodeToString(credential.getBytes());
-        return basicAuth;
-    }
 }

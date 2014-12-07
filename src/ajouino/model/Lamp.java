@@ -13,7 +13,6 @@ public class Lamp extends Device {
 
     public Lamp(DeviceInfo deviceInfo) {
         super(deviceInfo);
-        setType("lamp");
     }
 
 }

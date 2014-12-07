@@ -8,11 +8,9 @@ package ajouino.util;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collection;
-import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.sqlite.SQLiteConfig;
@@ -21,9 +19,9 @@ import org.sqlite.SQLiteConfig;
  *
  * @author YoungRok
  */
-public class JDBCUtil {
+public class JdbcAdapter {
 
-    //database connection information 
+    //database connection information
     private static final String DB_FILE = "ajouino.db";
 
     private static Connection connection;
@@ -32,12 +30,13 @@ public class JDBCUtil {
         try {
             connection = openConnection();
         } catch (SQLException ex) {
-            Logger.getLogger(JDBCUtil.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(JdbcAdapter.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
     public interface SQLObjectInteface {
         public String toSQL();
+        public String getPrimaryKey();
     }
     
     //get a connection
@@ -45,12 +44,25 @@ public class JDBCUtil {
         Connection conn = null;
 
         SQLiteConfig config = new SQLiteConfig();
-        conn = DriverManager.getConnection("jdbc:sqlite:/" + DB_FILE, config.toProperties());
+        String filepath = JdbcAdapter.class.getClass().getResource("/").getPath();
+        conn = DriverManager.getConnection("jdbc:sqlite:/" + filepath + DB_FILE, config.toProperties());
 
         System.out.println("Connected to database");
         isOpened = true;
 
         return conn;
+    }
+
+    public static int updateRecord(String relation, String projection, String condition) throws SQLException {
+        Statement state = connection.createStatement();
+        String query = new StringBuilder()
+                .append("UPDATE ")
+                .append(relation)
+                .append(" SET ").append(projection)
+                .append(" WHERE ").append(condition)
+                .append(";").toString();
+
+        return state.executeUpdate(query);
     }
 
     //create single record with record object    
@@ -105,12 +117,11 @@ public class JDBCUtil {
     }
 
     //delete record
-    public static int deleteRecord(String projection, String relation, String condition) throws SQLException {
+    public static int deleteRecord(String relation, String condition) throws SQLException {
         Statement state = connection.createStatement();
 
         StringBuilder sb = new StringBuilder()
-                .append("DELETE ").append(projection)
-                .append(" FROM ").append(relation);
+                .append("DELETE FROM ").append(relation);
         if (condition != null) {
             sb.append(" WHERE ").append(condition);
         }

@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package ajouino.services;
+package ajouino.service;
 
 import ajouino.model.Device;
 import ajouino.model.DeviceInfo;
@@ -30,7 +30,6 @@ public class DeviceFactory {
             } else {
                 device = new Device(deviceInfo);
             }
-            device.setType(type);
         } else {
             device = new Device(deviceInfo);
         }

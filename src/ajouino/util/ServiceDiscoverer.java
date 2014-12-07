@@ -22,9 +22,7 @@ import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
 import javax.jmdns.ServiceListener;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.*;
 
 /**
  * Sample Code for Listing Services using JmDNS.
@@ -33,45 +31,59 @@ import java.util.Collections;
  *
  * @author Werner Randelshofer
  */
-public class JmDNSUtil {
+public class ServiceDiscoverer {
 
     public final static String ARDUINO_SERVICE = "_arduino._tcp.local.";
+    public final static String AJOUINO_SERVICE = "_ajouino._tcp.local.";
 
     private static JmDNS jmDNS = null;
-    {
+    private static Map<String, ServiceInfo> serviceInfos = new Hashtable<String, ServiceInfo>();
+    private static ServiceListener serviceListener = new ServiceListener() {
+        @Override
+        public void serviceAdded(ServiceEvent serviceEvent) {
+            ServiceInfo info = serviceEvent.getInfo();
+            System.out.println("JmDNS: Service Added : " + info.toString());
+            serviceInfos.put(info.getName(), info);
+        }
+
+        @Override
+        public void serviceRemoved(ServiceEvent serviceEvent) {
+            ServiceInfo info = serviceEvent.getInfo();
+            System.out.println("JmDNS: Service Removed : " + info.toString());
+            serviceInfos.remove(info.getName());
+        }
+
+        @Override
+        public void serviceResolved(ServiceEvent serviceEvent) {
+            ServiceInfo info = serviceEvent.getInfo();
+            //System.out.println("JmDNS: Service Resolved : " + info.toString());
+            serviceInfos.put(info.getName(), info);
+        }
+    };
+
+    static {
         try {
             jmDNS = JmDNS.create();
             jmDNS.addServiceListener(ARDUINO_SERVICE, serviceListener);
+            jmDNS.addServiceListener(AJOUINO_SERVICE, serviceListener);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static ServiceListener serviceListener = new ServiceListener() {
-        @Override
-        public void serviceAdded(ServiceEvent serviceEvent) {
-            serviceInfos.add(serviceEvent.getInfo());
-        }
-
-        @Override
-        public void serviceRemoved(ServiceEvent serviceEvent) {
-            serviceInfos.remove(serviceEvent.getInfo());
-        }
-
-        @Override
-        public void serviceResolved(ServiceEvent serviceEvent) {
-            serviceInfos.add(serviceEvent.getInfo());
-        }
-    };
-
-    private static Collection<ServiceInfo> serviceInfos = new ArrayList<ServiceInfo>();
-
-    public static ServiceInfo[] lookupServices(String serviceType) {
+    public static Collection<ServiceInfo> getServicesOnNetwork() {
 
         ServiceInfo[] infos = null;
-        try {
+        if(serviceInfos != null && !serviceInfos.isEmpty()) return serviceInfos.values();
+        else try {
             if(jmDNS == null) jmDNS = JmDNS.create();
+
+            serviceInfos.clear();
             infos = jmDNS.list(ARDUINO_SERVICE);
+            for(ServiceInfo info : infos) serviceInfos.put(info.getName(), info);
+
+            infos = jmDNS.list(AJOUINO_SERVICE);
+            for(ServiceInfo info : infos) serviceInfos.put(info.getName(), info);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -82,7 +94,6 @@ public class JmDNSUtil {
 //                exception.printStackTrace();
 //            }
         }
-        return infos;
+        return serviceInfos.values();
     }
-
 }

@@ -1,24 +1,18 @@
 package ajouino;
 
-import ajouino.controllers.DeviceController;
-import ajouino.controllers.SystemController;
-import ajouino.controllers.UserController;
-import ajouino.model.DeviceInfo;
+import ajouino.controller.DeviceController;
+import ajouino.controller.EventController;
+import ajouino.controller.UserController;
+import ajouino.model.Device;
 import ajouino.model.User;
-import ajouino.services.SessionManager;
-import ajouino.services.SystemServiceFacade;
-import com.google.gson.Gson;
-import com.sun.xml.internal.messaging.saaj.util.Base64;
+import ajouino.service.SessionManager;
+import ajouino.service.SystemFacade;
+import ajouino.util.AuthUtils;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.ServerRunner;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.StringTokenizer;
 
 /**
  * Ajouino HTTP server.
@@ -29,26 +23,28 @@ public class AjouinoServer extends NanoHTTPD {
 
     private DeviceController deviceController;
     private UserController userController;
-    private SystemController systemController;
+    private EventController eventController;
     private SessionManager sessionManager;
 
     public AjouinoServer() {
         super(80);
 
-        sessionManager = SystemServiceFacade.getInstance().getSessionManager();
+        sessionManager = SystemFacade.getInstance().getSessionManager();
 
         deviceController = new DeviceController();
         userController = new UserController();
-        systemController = new SystemController();
-        SystemServiceFacade.getInstance().getUserManager().putUser(new User("admin", "1234"));
+        eventController = new EventController();
 
+        if(SystemFacade.getInstance().getUserCatalog().getUser("admin") == null) {
+            SystemFacade.getInstance().getUserCatalog().putUser(new User("admin", "1234"));
+        }
     }
 
     @Override
     public Response serve(IHTTPSession session) {
         Method method = session.getMethod();
         String uri = session.getUri();
-        Map<String, String> httpParams = session.getParms();
+        Map<String, String> httpParams = session.getHeaders();
 
         // put remote host address into params
         String remoteAddress = new String(session.getHeaders().get("remote-addr").getBytes());
@@ -68,15 +64,19 @@ public class AjouinoServer extends NanoHTTPD {
         User user = sessionManager.getUserFromSession(remoteAddress);
         if (user == null) {
             String authHeader = session.getHeaders().get("authorization");
-            user = getUserFromHeader(authHeader);
+            user = AuthUtils.getUserFromHeader(authHeader);
             if (user != null) {
                 sessionManager.createSession(user, remoteAddress);
             } else {
-                return new Response(Response.Status.UNAUTHORIZED, NanoHTTPD.MIME_PLAINTEXT, "Unauthorized");
+                // Get device from remote address
+                Device device = SystemFacade.getInstance().getDeviceCatalog().getDeviceByAddress(remoteAddress);
+                if(device == null) {
+                    return new Response(Response.Status.UNAUTHORIZED, NanoHTTPD.MIME_PLAINTEXT, "Unauthorized");
+                }
             }
         }
 
-        System.out.println(method + " " + uri + " " + httpParams.get("postData"));
+        System.out.println(method + " " + uri + " " + ((httpParams.get("postData") != null) ? httpParams.get("postData") : "" ));
         String[] splittedUri = uri.split("/");
 
         Response response = null;
@@ -85,11 +85,11 @@ public class AjouinoServer extends NanoHTTPD {
 
             // select an appropriate controller
             if (splittedUri[1].startsWith("device")) {
-                controller = (HTTPInterface) deviceController;
+                controller = deviceController;
             } else if (splittedUri[1].startsWith("user")) {
-                controller = (HTTPInterface) userController;
-            } else if (splittedUri[1].equalsIgnoreCase("session")) {
-                controller = (HTTPInterface) systemController;
+                controller = userController;
+            } else if (splittedUri[1].equalsIgnoreCase("event")) {
+                controller = eventController;
             }
 
             // route to the controller
@@ -101,7 +101,7 @@ public class AjouinoServer extends NanoHTTPD {
             }
 
         } else {
-            // index page response
+            // default index page response
             System.out.println(method + " '" + uri + "' ");
             String msg = "<html><body><h1>Hello server</h1>\n";
             Map<String, String> parms = session.getParms();
@@ -118,21 +118,9 @@ public class AjouinoServer extends NanoHTTPD {
             response = new Response(msg);
         }
 
-//        System.out.println("   > " + response.getData());
         return response;
     }
 
-    private User getUserFromHeader(String authHeader) {
-        if(authHeader != null && !authHeader.isEmpty()) {
-            authHeader = authHeader.split(" ")[1];
-            String userId = Base64.base64Decode(authHeader).split(":")[0];
-            User user = SystemServiceFacade.getInstance().getUserManager().getUser(userId);
-            if (user != null && user.authenticate(authHeader)) {
-                return user;
-            }
-        }
-        return null;
-    }
 
     public static void main(String[] args) {
         ServerRunner.run(AjouinoServer.class);

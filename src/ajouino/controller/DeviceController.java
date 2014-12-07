@@ -3,37 +3,39 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package ajouino.controllers;
+package ajouino.controller;
 
 import ajouino.AjouinoServer;
 import ajouino.model.Device;
 import ajouino.model.DeviceInfo;
 import ajouino.model.Event;
-import ajouino.services.DeviceManager;
-import ajouino.services.SystemServiceFacade;
-import ajouino.util.ArduinoUtil;
-import ajouino.services.DeviceFactory;
+import ajouino.persistent.DeviceCatalog;
+import ajouino.service.SystemFacade;
+import ajouino.util.ArduinoCaller;
+import ajouino.service.DeviceFactory;
 import com.google.gson.Gson;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
- * @author YoungRok
+ * DeviceController
+ * <p/>
+ * Controls HTTP Request related with Device
  */
 public class DeviceController implements AjouinoServer.HTTPInterface {
 
-    private DeviceManager deviceManager;
+    private DeviceCatalog deviceManager;
     private Gson gson = new Gson();
 
     public DeviceController() {
-        deviceManager = SystemServiceFacade.getInstance().getDeviceManager();
+        deviceManager = SystemFacade.getInstance().getDeviceCatalog();
     }
 
     /**
@@ -104,6 +106,7 @@ public class DeviceController implements AjouinoServer.HTTPInterface {
                     Device device = deviceManager.getDevice(operand);
                     DeviceInfo deviceInfo = gson.fromJson(postData, DeviceInfo.class);
                     //device.update(deviceInfo);
+                    //TODO: PUT device is not used yet
 
                 } else {
                     return new Response(Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "BAD REQUEST: Syntax error. Usage: PUT /device/");
@@ -111,9 +114,25 @@ public class DeviceController implements AjouinoServer.HTTPInterface {
 
             case DELETE:
                 if (operand != null) {
+                    //device id is given.
                     Device device = deviceManager.getDevice(operand);
-                    return deleteDevice(device);
 
+                    if (operand2 == null) {
+                        // DELETE /device/id/ deletes the device
+                        return deleteDevice(device);
+
+                    } else {
+                        // DELETE /device/id/eventid deletes the event
+                        Event eventToRemove = null;
+                        for (Event event : device.getEvents()) {
+                            if (event.getTimestamp().getTime() == Long.parseLong(operand2)) {
+                                eventToRemove = event;
+                                break;
+                            }
+                        }
+                        return deleteEvent(device, eventToRemove);
+
+                    }
                 } else {
                     return new Response(Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "BAD REQUEST: Syntax error. Usage: DELETE /device/id");
                 }
@@ -148,16 +167,17 @@ public class DeviceController implements AjouinoServer.HTTPInterface {
     private Response postEvent(String deviceId, Event event) {
         Device device = deviceManager.getDevice(deviceId);
         if (device != null && event.getDeviceID().equals(deviceId)) try {
-            String result = ArduinoUtil.invokeEvent(device, event);
+            String result = ArduinoCaller.invokeEvent(device, event);
             deviceManager.putEvent(device, event);
             return new Response(Response.Status.OK, NanoHTTPD.MIME_JSON, result);
 
-        } catch (ArduinoUtil.ArduinoException ex) {
+        } catch (ArduinoCaller.ArduinoCallException ex) {
             Response.Status errorStatus = Response.Status.getStatusByCode(ex.getErrorCode());
             if (errorStatus == null) errorStatus = Response.Status.INTERNAL_ERROR;
             return new Response(errorStatus, NanoHTTPD.MIME_PLAINTEXT, ex.getMessage());
 
-        } else {
+        }
+        else {
             return new Response(Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "device not found : " + deviceId);
         }
     }
@@ -166,20 +186,25 @@ public class DeviceController implements AjouinoServer.HTTPInterface {
         try {
             DeviceInfo deviceInfo = null;
             String password = device.getPassword();
-            String deviceValidationString = ArduinoUtil.requestInformation(device);
+            String address = device.getAddress();
+            String label = device.getLabel();
+            String deviceValidationString = ArduinoCaller.requestInformation(device);
             System.out.println(deviceValidationString);
             if (deviceValidationString != null) deviceInfo = gson.fromJson(deviceValidationString, DeviceInfo.class);
             if (deviceInfo != null) {
                 device = DeviceFactory.createDevice(deviceInfo);
                 device.setPassword(password);
+                device.setAddress(address);
                 device.setAvailable(true);
+                if(label != null) device.setLabel(label);
+
                 deviceManager.putDevice(device);
                 return new Response(Response.Status.OK, NanoHTTPD.MIME_JSON, gson.toJson(device));
             } else {
                 device.setAvailable(false);
                 return new Response(Response.Status.NOT_FOUND, NanoHTTPD.MIME_JSON, "Cannot connect to " + device.getAddress());
             }
-        } catch (ArduinoUtil.ArduinoException e) {
+        } catch (ArduinoCaller.ArduinoCallException e) {
             Response.Status errorStatus = Response.Status.getStatusByCode(e.getErrorCode());
             if (errorStatus == null) errorStatus = Response.Status.INTERNAL_ERROR;
             return new Response(errorStatus, NanoHTTPD.MIME_PLAINTEXT, e.getMessage());
@@ -187,7 +212,33 @@ public class DeviceController implements AjouinoServer.HTTPInterface {
     }
 
     private Response deleteDevice(DeviceInfo deviceInfo) {
-        Device device = deviceManager.removeDevice(deviceInfo.getId());
-        return new Response(Response.Status.OK, NanoHTTPD.MIME_JSON, gson.toJson(device));
+        if (deviceInfo != null) {
+            Device device = deviceManager.removeDevice(deviceInfo.getId());
+            return new Response(Response.Status.OK, NanoHTTPD.MIME_JSON, gson.toJson(device));
+        } else {
+            return new Response(Response.Status.OK, NanoHTTPD.MIME_JSON, "");
+        }
+    }
+
+    private Response deleteEvent(Device device, Event event) {
+        if (device != null) {
+            if (event != null) {
+                deviceManager.removeEvent(event);
+
+                try {
+                    String path = getClass().getResource("/").getPath() + "image/";
+                    File imageFile = new File(path + event.getTimestamp().getTime());
+                    Files.deleteIfExists(imageFile.toPath());
+                } catch (IOException e) {
+                    //e.printStackTrace();
+                }
+
+                return new Response(Response.Status.OK, NanoHTTPD.MIME_JSON, gson.toJson(event));
+            } else {
+                return new Response(Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, "");
+            }
+        } else {
+            return new Response(Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "NOT FOUND: Device not found.");
+        }
     }
 }

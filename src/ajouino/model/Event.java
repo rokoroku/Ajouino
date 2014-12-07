@@ -5,14 +5,15 @@
  */
 package ajouino.model;
 
-import ajouino.util.JDBCUtil;
+import ajouino.util.JdbcAdapter;
+
 import java.util.Date;
 
 /**
  *
  * @author YoungRok
  */
-public class Event implements JDBCUtil.SQLObjectInteface {
+public class Event implements JdbcAdapter.SQLObjectInteface {
 
     public static final String TYPE_DIGITAL = "digital";
     public static final String TYPE_ANALOG = "analog";
@@ -82,5 +83,10 @@ public class Event implements JDBCUtil.SQLObjectInteface {
                 .append(")");
         return sb.toString();
     }
-    
+
+
+    @Override
+    public String getPrimaryKey() {
+        return String.valueOf(timestamp.getTime());
+    }
 }

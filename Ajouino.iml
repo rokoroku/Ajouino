@@ -10,5 +10,6 @@
     <orderEntry type="library" name="gson-2.3" level="project" />
     <orderEntry type="library" name="sqlite-jdbc-3.8.7" level="project" />
     <orderEntry type="library" name="jmdns-3.4.1" level="project" />
+    <orderEntry type="library" name="gcm-server" level="project" />
   </component>
 </module>

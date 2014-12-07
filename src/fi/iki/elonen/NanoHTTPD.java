@@ -1,5 +1,7 @@
 package fi.iki.elonen;
 
+import com.sun.xml.internal.messaging.saaj.util.ByteInputStream;
+
 import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -10,6 +12,7 @@ import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -311,7 +314,7 @@ public abstract class NanoHTTPD {
     protected String decodePercent(String str) {
         String decoded = null;
         try {
-            decoded = URLDecoder.decode(str, "UTF8");
+            decoded = URLDecoder.decode(str, "UTF-8");
         } catch (UnsupportedEncodingException ignored) {
         }
         return decoded;

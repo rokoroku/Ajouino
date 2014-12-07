@@ -5,23 +5,20 @@
  */
 package ajouino.model;
 
-import ajouino.util.ArduinoUtil;
-import ajouino.util.JDBCUtil;
+import ajouino.util.ArduinoCaller;
+import ajouino.util.JdbcAdapter;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
  * @author YoungRok
  */
-public class Device extends DeviceInfo implements JDBCUtil.SQLObjectInteface {
+public class Device extends DeviceInfo implements JdbcAdapter.SQLObjectInteface {
 
     private String password;
     private List<Event> events = new ArrayList<Event>();
@@ -39,18 +36,18 @@ public class Device extends DeviceInfo implements JDBCUtil.SQLObjectInteface {
 
     public boolean connect() {
         try {
-            ArduinoUtil.requestInformation(this);
+            ArduinoCaller.requestInformation(this);
             this.available = true;
-        } catch (ArduinoUtil.ArduinoException ex) {
+        } catch (ArduinoCaller.ArduinoCallException ex) {
             Logger.getLogger(Device.class.getName()).log(Level.SEVERE, null, ex);
             this.available = false;
         }
         return isAvailable();
     }
 
-    public boolean sendEvent(Event event) throws ArduinoUtil.ArduinoException {
+    public boolean sendEvent(Event event) throws ArduinoCaller.ArduinoCallException {
         if (event != null) {
-            ArduinoUtil.invokeEvent(this, event);
+            ArduinoCaller.invokeEvent(this, event);
             this.events.add(event);
             lastSyncDate = new Date();
             return true;
@@ -113,13 +110,20 @@ public class Device extends DeviceInfo implements JDBCUtil.SQLObjectInteface {
     public String getType() {
         return type;
     }
-    
+
     public void setType(String type) {
         this.type = type;
     }
 
-    public void addEvent(Event event) {
-        if(!events.contains(event)) events.add(event);
+    public boolean addEvent(Event event) {
+        if (!events.contains(event)) {
+            return events.add(event);
+        }
+        return false;
+    }
+
+    public boolean removeEvent(Event event) {
+        return events.remove(event);
     }
 
     @Override
@@ -135,5 +139,10 @@ public class Device extends DeviceInfo implements JDBCUtil.SQLObjectInteface {
                 .append((createDate != null) ? "'" + createDate.getTime() + "'" : "null")
                 .append(")");
         return sb.toString();
+    }
+
+    @Override
+    public String getPrimaryKey() {
+        return id;
     }
 }
