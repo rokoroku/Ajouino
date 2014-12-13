@@ -32,7 +32,14 @@ public class EventController implements AjouinoServer.HTTPInterface {
     private DeviceCatalog deviceCatalog;
     private Gson gson = new Gson();
 
-    public EventController() {
+    private static EventController mInstance = null;
+
+    public static EventController getInstance() {
+        if(mInstance == null) mInstance = new EventController();
+        return mInstance;
+    }
+
+    private EventController() {
         deviceCatalog = SystemFacade.getInstance().getDeviceCatalog();
     }
 
@@ -66,12 +73,19 @@ public class EventController implements AjouinoServer.HTTPInterface {
                             // GET "/event/image/eventid"
                             // command = "event"
                             // operand = "image"
-                            // operand2 = "eventid" which is timestamp of the event.
+                            // operand2 = "deviceid_eventid" eventid is timestamp of the event.
 
                             try {
                                 // get path of stored image
-                                String path = getClass().getResource("/").getPath() + "image/" + operand2;
-                                InputStream is = new FileInputStream(new File(path));
+                                String filepath = "";
+                                try {
+                                    filepath = getClass().getResource("/").getPath();
+                                } catch (Exception e) {
+                                    filepath = "";
+                                }
+                                filepath += "image/" + operand2;
+
+                                InputStream is = new FileInputStream(new File(filepath));
 
                                 // return stream of image
                                 return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, HttpRequest.JPEG_MIME_TYPE, is);
@@ -123,24 +137,32 @@ public class EventController implements AjouinoServer.HTTPInterface {
                     if (event != null)
                         device = SystemFacade.getInstance().getDeviceCatalog().getDevice(event.getDeviceID());
                     if (device != null) {
-                        // send GCM Push Notification
-                        GcmSender.sendMessage(gson.toJson(event));
 
                         // get temp file path
                         Path tempFilePath = Paths.get(httpParams.get("content"));
 
                         // create "/image/" directory if not exist
-                        String path = getClass().getResource("/").getPath() + "image/";
-                        File outputDir = new File(path);
+                        String filepath = "";
+                        try {
+                            filepath = getClass().getResource("/").getPath();
+                        } catch (Exception e) {
+                            filepath = "";
+                        }
+                        filepath += "image/";
+                        File outputDir = new File(filepath);
                         if (!outputDir.exists()) outputDir.mkdir();
 
                         // create output file
-                        File outputFile = new File(path + event.getTimestamp().getTime());
+                        String filename = device.getId() + "_" + event.getTimestamp().getTime();
+                        File outputFile = new File(filepath + filename);
                         if (!outputFile.exists()) outputFile.createNewFile();
 
                         // write to output file
                         Files.copy(tempFilePath, new FileOutputStream(outputFile));
                         deviceCatalog.addEvent(event);
+
+                        // send GCM Push Notification
+                        GcmSender.sendMessage(gson.toJson(event));
 
                         return new NanoHTTPD.Response(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, "OK");
 

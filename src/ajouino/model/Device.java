@@ -8,7 +8,6 @@ package ajouino.model;
 import ajouino.util.ArduinoCaller;
 import ajouino.util.JdbcAdapter;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;

@@ -12,7 +12,7 @@ import ajouino.model.Event;
 import ajouino.persistent.DeviceCatalog;
 import ajouino.service.SystemFacade;
 import ajouino.util.ArduinoCaller;
-import ajouino.service.DeviceFactory;
+import ajouino.util.DeviceFactory;
 import com.google.gson.Gson;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response;
@@ -20,7 +20,6 @@ import fi.iki.elonen.NanoHTTPD.Response;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Map;
 
@@ -34,7 +33,14 @@ public class DeviceController implements AjouinoServer.HTTPInterface {
     private DeviceCatalog deviceManager;
     private Gson gson = new Gson();
 
-    public DeviceController() {
+    private static DeviceController mInstance = null;
+
+    public static DeviceController getInstance() {
+        if(mInstance == null) mInstance = new DeviceController();
+        return mInstance;
+    }
+
+    private DeviceController() {
         deviceManager = SystemFacade.getInstance().getDeviceCatalog();
     }
 
@@ -118,11 +124,11 @@ public class DeviceController implements AjouinoServer.HTTPInterface {
                     Device device = deviceManager.getDevice(operand);
 
                     if (operand2 == null) {
-                        // DELETE /device/id/ deletes the device
+                        // 1. DELETE /device/id/ deletes the device
                         return deleteDevice(device);
 
                     } else {
-                        // DELETE /device/id/eventid deletes the event
+                        // 2. DELETE /device/id/eventid deletes the event
                         Event eventToRemove = null;
                         for (Event event : device.getEvents()) {
                             if (event.getTimestamp().getTime() == Long.parseLong(operand2)) {
@@ -214,6 +220,11 @@ public class DeviceController implements AjouinoServer.HTTPInterface {
     private Response deleteDevice(DeviceInfo deviceInfo) {
         if (deviceInfo != null) {
             Device device = deviceManager.removeDevice(deviceInfo.getId());
+            try {
+                ArduinoCaller.unregisterDevice(device);
+            } catch (ArduinoCaller.ArduinoCallException e) {
+                e.printStackTrace();
+            }
             return new Response(Response.Status.OK, NanoHTTPD.MIME_JSON, gson.toJson(device));
         } else {
             return new Response(Response.Status.OK, NanoHTTPD.MIME_JSON, "");

@@ -15,7 +15,7 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-package ajouino.util;
+package ajouino.service;
 
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
@@ -33,8 +33,8 @@ import java.util.*;
  */
 public class ServiceDiscoverer {
 
-    public final static String ARDUINO_SERVICE = "_arduino._tcp.local.";
-    public final static String AJOUINO_SERVICE = "_ajouino._tcp.local.";
+    public final static String ARDUINO_SERVICE = "_arduino._tcp.local.";    // service type of original Arduino Yun
+    public final static String AJOUINO_SERVICE = "_ajouino._tcp.local.";    // service type of our Arduino-simulating android device.
 
     private static JmDNS jmDNS = null;
     private static Map<String, ServiceInfo> serviceInfos = new Hashtable<String, ServiceInfo>();
@@ -42,8 +42,7 @@ public class ServiceDiscoverer {
         @Override
         public void serviceAdded(ServiceEvent serviceEvent) {
             ServiceInfo info = serviceEvent.getInfo();
-            System.out.println("JmDNS: Service Added : " + info.toString());
-            serviceInfos.put(info.getName(), info);
+            //System.out.println("JmDNS: Service Added : " + info.toString());
         }
 
         @Override
@@ -56,7 +55,7 @@ public class ServiceDiscoverer {
         @Override
         public void serviceResolved(ServiceEvent serviceEvent) {
             ServiceInfo info = serviceEvent.getInfo();
-            //System.out.println("JmDNS: Service Resolved : " + info.toString());
+            System.out.println("JmDNS: Service Resolved : " + info.toString());
             serviceInfos.put(info.getName(), info);
         }
     };

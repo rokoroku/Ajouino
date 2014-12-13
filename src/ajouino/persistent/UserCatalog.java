@@ -23,6 +23,11 @@ import java.util.logging.Logger;
  */
 public class UserCatalog {
 
+    private final static String USER_COLUMN_ID = "Id";
+    private final static String USER_COLUMN_PASSWORD = "Password";
+    private final static String USER_COLUMN_GCM_TOKEN = "Gcm_id";
+    private final static String USER_COLUMN_PERMISSION = "Permission";
+
     Map<String, User> userMap;
 
     public UserCatalog() {
@@ -105,11 +110,6 @@ public class UserCatalog {
         }
         return user;
     }
-
-    public final static String USER_COLUMN_ID = "Id";
-    public final static String USER_COLUMN_PASSWORD = "Password";
-    public final static String USER_COLUMN_GCM_TOKEN = "Gcm_id";
-    public final static String USER_COLUMN_PERMISSION = "Permission";
 
     private boolean createTable() {
         try {

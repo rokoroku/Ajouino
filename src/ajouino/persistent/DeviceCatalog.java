@@ -8,9 +8,9 @@ package ajouino.persistent;
 import ajouino.model.Device;
 import ajouino.model.DeviceInfo;
 import ajouino.model.Event;
-import ajouino.service.DeviceFactory;
+import ajouino.util.DeviceFactory;
 import ajouino.util.JdbcAdapter;
-import ajouino.util.ServiceDiscoverer;
+import ajouino.service.ServiceDiscoverer;
 
 import javax.jmdns.ServiceInfo;
 import java.sql.ResultSet;
@@ -28,6 +28,18 @@ import java.util.logging.Logger;
  * @author YoungRok
  */
 public class DeviceCatalog {
+
+    private final static String DEVICE_COLUMN_ID = "Id";
+    private final static String DEVICE_COLUMN_ADDRESS = "Address";
+    private final static String DEVICE_COLUMN_TYPE = "Type";
+    private final static String DEVICE_COLUMN_LABEL = "Label";
+    private final static String DEVICE_COLUMN_PASSWORD = "Password";
+    private final static String DEVICE_COLUMN_CREATEDATE = "CreateDate";
+
+    private final static String EVENT_COLUMN_TIMESTAMP = "Timestamp";
+    private final static String EVENT_COLUMN_DEVICE_ID = "D_id";
+    private final static String EVENT_COLUMN_TYPE = "Type";
+    private final static String EVENT_COLUMN_VALUE = "Value";
 
     Map<String, Device> deviceMap;
 
@@ -228,8 +240,7 @@ public class DeviceCatalog {
                     String type = resultSet2.getString(3);
                     int value = resultSet2.getInt(4);
 
-                    Event event = new Event(deviceId, type, value, timestamp);
-                    device.addEvent(event);
+                    device.addEvent(new Event(deviceId, type, value, timestamp));
                 }
 
             }
@@ -241,33 +252,21 @@ public class DeviceCatalog {
 
     }
 
-    private final static String DEVICE_COLUMN_ID = "Id";
-    private final static String DEVICE_COLUMN_ADDRESS = "Address";
-    private final static String DEVICE_COLUMN_TYPE = "Type";
-    private final static String DEVICE_COLUMN_LABEL = "Label";
-    private final static String DEVICE_COLUMN_PASSWORD = "Password";
-    private final static String DEVICE_COLUMN_CREATEDATE = "CreateDate";
-
-    private final static String EVENT_COLUMN_TIMESTAMP = "Timestamp";
-    private final static String EVENT_COLUMN_DEVICE_ID = "D_id";
-    private final static String EVENT_COLUMN_TYPE = "Type";
-    private final static String EVENT_COLUMN_VALUE = "Value";
-
     private boolean createTable() {
         try {
             String relation = "DEVICE";
-            String definition = DEVICE_COLUMN_ID + " VARCHAR(15) NOT NULL,"
-                    + DEVICE_COLUMN_ADDRESS + " VARCHAR(15) NOT NULL,"
+            String definition = DEVICE_COLUMN_ID + " VARCHAR(20) NOT NULL,"
+                    + DEVICE_COLUMN_ADDRESS + " VARCHAR(20) NOT NULL,"
                     + DEVICE_COLUMN_TYPE + " VARCHAR(10),"
-                    + DEVICE_COLUMN_LABEL + " VARCHAR(15),"
-                    + DEVICE_COLUMN_PASSWORD + " VARCHAR(15),"
+                    + DEVICE_COLUMN_LABEL + " VARCHAR(20),"
+                    + DEVICE_COLUMN_PASSWORD + " VARCHAR(20),"
                     + DEVICE_COLUMN_CREATEDATE + " INT8,"
                     + "PRIMARY KEY (" + DEVICE_COLUMN_ID + ")";
             JdbcAdapter.createTable(relation, definition);
 
             relation = "EVENT";
             definition = EVENT_COLUMN_TIMESTAMP + " INT8 NOT NULL,"
-                    + EVENT_COLUMN_DEVICE_ID + " VARCHAR(15) NOT NULL,"
+                    + EVENT_COLUMN_DEVICE_ID + " VARCHAR(20) NOT NULL,"
                     + EVENT_COLUMN_TYPE + " CARCHAR(8) NOT NULL,"
                     + EVENT_COLUMN_VALUE + " INT NOT NULL,"
                     + "PRIMARY KEY (" + EVENT_COLUMN_TIMESTAMP + ") "

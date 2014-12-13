@@ -9,10 +9,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * DeviceInfo 
+ * DeviceInfo
  * to communicate between Ajouino server and device
  * and to create a device class in ajouino server.
- * 
+ *
  * @author YoungRok
  */
 public class DeviceInfo {
@@ -22,9 +22,20 @@ public class DeviceInfo {
     protected String label;
     protected Map<String, Integer> values;
 
+    /**
+     * Empty constructor for Gson
+     */
     public DeviceInfo() {
     }
 
+    /**
+     * An object representing a device's information
+     *
+     * @param id      device's id
+     * @param type    device's type
+     * @param address device's ip address
+     * @param label   device's label
+     */
     public DeviceInfo(String id, String type, String address, String label) {
         this.id = id;
         this.type = type;
@@ -32,7 +43,7 @@ public class DeviceInfo {
         this.label = label;
         this.values = new HashMap<String, Integer>();
     }
-    
+
     public String getId() {
         return id;
     }
@@ -48,7 +59,7 @@ public class DeviceInfo {
     public void setAddress(String address) {
         this.address = address;
     }
-        
+
     public String getType() {
         return type;
     }
@@ -72,6 +83,6 @@ public class DeviceInfo {
     public void setValues(Map<String, Integer> values) {
         this.values = values;
     }
-    
-    
+
+
 }

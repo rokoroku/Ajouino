@@ -16,28 +16,11 @@ import java.util.Map;
 
 /**
  * Ajouino HTTP server.
- *
- *
  */
 public class AjouinoServer extends NanoHTTPD {
 
-    private DeviceController deviceController;
-    private UserController userController;
-    private EventController eventController;
-    private SessionManager sessionManager;
-
     public AjouinoServer() {
         super(80);
-
-        sessionManager = SystemFacade.getInstance().getSessionManager();
-
-        deviceController = new DeviceController();
-        userController = new UserController();
-        eventController = new EventController();
-
-        if(SystemFacade.getInstance().getUserCatalog().getUser("admin") == null) {
-            SystemFacade.getInstance().getUserCatalog().putUser(new User("admin", "1234"));
-        }
     }
 
     @Override
@@ -48,12 +31,12 @@ public class AjouinoServer extends NanoHTTPD {
 
         // put remote host address into params
         String remoteAddress = new String(session.getHeaders().get("remote-addr").getBytes());
-        if(httpParams.get("address") == null) {
+        if (httpParams.get("address") == null) {
             httpParams.put("address", remoteAddress);
         }
 
         // put body contents into params
-        if(method.equals(Method.PUT) || method.equals(Method.POST)) try {
+        if (method.equals(Method.PUT) || method.equals(Method.POST)) try {
             session.parseBody(httpParams);
         } catch (Exception e) {
             e.printStackTrace();
@@ -61,22 +44,26 @@ public class AjouinoServer extends NanoHTTPD {
 
         // Get user from created session
         // or create a new session if valid authentication header is given
+        SessionManager sessionManager = SystemFacade.getInstance().getSessionManager();
         User user = sessionManager.getUserFromSession(remoteAddress);
         if (user == null) {
             String authHeader = session.getHeaders().get("authorization");
-            user = AuthUtils.getUserFromHeader(authHeader);
+            if(authHeader != null) {
+                String username = AuthUtils.getUsernameFromHeader(authHeader);
+                user = SystemFacade.getInstance().getUserCatalog().getUser(username);
+            }
             if (user != null) {
                 sessionManager.createSession(user, remoteAddress);
             } else {
                 // Get device from remote address
                 Device device = SystemFacade.getInstance().getDeviceCatalog().getDeviceByAddress(remoteAddress);
-                if(device == null) {
+                if (device == null) {
                     return new Response(Response.Status.UNAUTHORIZED, NanoHTTPD.MIME_PLAINTEXT, "Unauthorized");
                 }
             }
         }
 
-        System.out.println(method + " " + uri + " " + ((httpParams.get("postData") != null) ? httpParams.get("postData") : "" ));
+        System.out.println(method + " " + uri + " " + ((httpParams.get("postData") != null) ? httpParams.get("postData") : ""));
         String[] splittedUri = uri.split("/");
 
         Response response = null;
@@ -84,13 +71,7 @@ public class AjouinoServer extends NanoHTTPD {
         if (splittedUri.length > 1) {
 
             // select an appropriate controller
-            if (splittedUri[1].startsWith("device")) {
-                controller = deviceController;
-            } else if (splittedUri[1].startsWith("user")) {
-                controller = userController;
-            } else if (splittedUri[1].equalsIgnoreCase("event")) {
-                controller = eventController;
-            }
+            controller = getController(splittedUri[1]);
 
             // route to the controller
             if (controller != null) {
@@ -122,8 +103,18 @@ public class AjouinoServer extends NanoHTTPD {
     }
 
 
-    public static void main(String[] args) {
-        ServerRunner.run(AjouinoServer.class);
+    public HTTPInterface getController(String route) {
+        HTTPInterface controller = null;
+
+        if (route.startsWith("device")) {
+            controller = DeviceController.getInstance();
+        } else if (route.startsWith("user")) {
+            controller = UserController.getInstance();
+        } else if (route.equalsIgnoreCase("event")) {
+            controller = EventController.getInstance();
+        }
+
+        return controller;
     }
 
     public static interface HTTPInterface {

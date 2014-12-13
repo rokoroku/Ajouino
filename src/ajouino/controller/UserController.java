@@ -24,12 +24,17 @@ import java.util.Map;
 public class UserController implements AjouinoServer.HTTPInterface {
 
     private UserCatalog userCatalog;
-    private SessionManager sessionManager;
     private Gson gson = new Gson();
 
-    public UserController() {
+    private static UserController mInstance = null;
+
+    public static UserController getInstance() {
+        if(mInstance == null) mInstance = new UserController();
+        return mInstance;
+    }
+
+    private UserController() {
         userCatalog = SystemFacade.getInstance().getUserCatalog();
-        sessionManager = SystemFacade.getInstance().getSessionManager();
     }
 
     /**
@@ -45,6 +50,7 @@ public class UserController implements AjouinoServer.HTTPInterface {
         //request : "/user/id/attr/"
         //uri : ["id", "attr"]
 
+        SessionManager sessionManager = SystemFacade.getInstance().getSessionManager();
         User invokeUser = sessionManager.getUserFromSession(param.get("address"));
 
         String command = null;

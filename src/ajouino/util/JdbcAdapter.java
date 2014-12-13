@@ -44,7 +44,12 @@ public class JdbcAdapter {
         Connection conn = null;
 
         SQLiteConfig config = new SQLiteConfig();
-        String filepath = JdbcAdapter.class.getClass().getResource("/").getPath();
+        String filepath = "";
+        try {
+            filepath = JdbcAdapter.class.getClass().getResource("/").getPath();
+        } catch (Exception e) {
+            filepath = "";
+        }
         conn = DriverManager.getConnection("jdbc:sqlite:/" + filepath + DB_FILE, config.toProperties());
 
         System.out.println("Connected to database");

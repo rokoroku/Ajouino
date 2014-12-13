@@ -47,6 +47,16 @@ public class ArduinoCaller {
         return invoke(sb.toString(), authHeader);
     }
 
+    public static void unregisterDevice(Device device) throws ArduinoCallException {
+        StringBuilder sb = new StringBuilder();
+        String address = device.getAddress();
+        if (!address.startsWith("http://")) sb.append("http://");
+        sb.append(address).append("/arduino/bye/0");
+
+        String authHeader = AuthUtils.generateBasicAuthHeader("root", device.getPassword());
+        invoke(sb.toString(), authHeader);
+    }
+
     public static String invokeEvent(Device device, Event event) throws ArduinoCallException {
         String uri = createRequestUri(device, event);
         String authHeader = AuthUtils.generateBasicAuthHeader("root", device.getPassword());
