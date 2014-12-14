@@ -5,6 +5,7 @@ Java home automation server communicating with Arduino Yun devices
 
 This app is not a commercial product, just a project for my capstone design lecture.
 
+(See also : <a href="https://github.com/rokoroku/AjouinoClient">Ajouino Client</a>)
 
 Open Source License
 -------------------
